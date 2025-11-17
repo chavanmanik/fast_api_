@@ -4,14 +4,17 @@ from fastapi.responses import FileResponse
 import os
 
 from app.database import engine, Base
-from app.routers import patient, doctor, appointment, auth_router
+from app.routers import billing_router, room_router, patient, doctor, appointment, auth_router
 
-# Create tables
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
+# Initialize FastAPI app (only once ✅)
 app = FastAPI(title="Hospital Management System")
 
 # Include routers
+app.include_router(billing_router.router)
+app.include_router(room_router.router)
 app.include_router(auth_router.router)
 app.include_router(patient.router)
 app.include_router(doctor.router)

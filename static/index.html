@@ -11,11 +11,11 @@
     }
     *{box-sizing:border-box}
     body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;margin:0;background:linear-gradient(180deg,#ecfeff 0%,var(--bg) 60%);color:#0f172a}
-    header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;position:sticky;top:0;background:transparent;backdrop-filter: blur(4px)}
     .brand{display:flex;align-items:center;gap:10px}
     .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
       display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
-    nav{display:flex;gap:12px;align-items:center}
+    nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
     a.navlink{padding:8px 12px;border-radius:10px;text-decoration:none;color:var(--muted);font-weight:600}
     a.navlink.active{background:var(--card);box-shadow:var(--shadow);color:#0f172a}
     .user-info{display:flex;align-items:center;gap:10px;color:var(--muted);font-weight:500}
@@ -28,8 +28,13 @@
     th{color:var(--muted);font-weight:700;font-size:13px}
     input,select,textarea{width:100%;padding:9px;border:1px solid #e5e7eb;border-radius:8px}
     .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;z-index:1000}
-    .modal{background:var(--card);padding:18px;border-radius:12px;min-width:320px;max-width:500px}
+    .modal{background:var(--card);padding:18px;border-radius:12px;min-width:320px;max-width:520px;max-height:90vh;overflow:auto}
     footer{font-size:13px;color:var(--muted);text-align:center;margin:20px 0}
+    .flex-row{display:flex;gap:10px;align-items:center}
+    .muted{color:var(--muted)}
+    .right{margin-left:auto}
+    .small{font-size:13px;padding:6px 8px}
+    .toast{position:fixed;right:20px;bottom:20px;background:#111;color:#fff;padding:10px 14px;border-radius:8px;z-index:2000;display:none}
   </style>
 </head>
 <body>
@@ -42,9 +47,11 @@
       </div>
     </div>
     <nav>
-      <a href="#patients" class="navlink active">Patients</a>
-      <a href="#doctors" class="navlink">Doctors</a>
-      <a href="#appointments" class="navlink">Appointments</a>
+      <a href="#patients" class="navlink active" onclick="setActiveNav(event)">Patients</a>
+      <a href="#doctors" class="navlink" onclick="setActiveNav(event)">Doctors</a>
+      <a href="#appointments" class="navlink" onclick="setActiveNav(event)">Appointments</a>
+      <a href="#rooms" class="navlink" onclick="setActiveNav(event)">Rooms</a>
+      <a href="#billing" class="navlink" onclick="setActiveNav(event)">Billing</a>
       <div class="user-info" id="userInfo" style="display:none;">
         👋 <span id="usernameDisplay">Admin</span>
         <button class="btn ghost" onclick="logout()">Logout</button>
@@ -52,7 +59,6 @@
     </nav>
   </header>
 
-  <!-- Dashboard Summary -->
   <div id="summary" class="card" style="display:flex;gap:20px;justify-content:space-around;">
     <div><h3 id="totalPatients">0</h3><p>Total Patients</p></div>
     <div><h3 id="totalDoctors">0</h3><p>Total Doctors</p></div>
@@ -62,23 +68,66 @@
   <main>
     <!-- Patients -->
     <div id="patients" class="card">
-      <h2>Patients</h2>
-      <button class="btn ghost" onclick="openModal('patient')">+ Add Patient</button>
+      <div class="flex-row">
+        <h2>Patients</h2>
+        <div class="right">
+          <button class="btn ghost small" onclick="openModal('patient')">+ Add Patient</button>
+          <button class="btn ghost small" onclick="loadPatients()">🔄 Refresh</button>
+        </div>
+      </div>
       <table id="patientsTable"><thead><tr><th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Actions</th></tr></thead><tbody></tbody></table>
     </div>
 
     <!-- Doctors -->
     <div id="doctors" class="card">
-      <h2>Doctors</h2>
-      <button class="btn ghost" onclick="openModal('doctor')">+ Add Doctor</button>
+      <div class="flex-row">
+        <h2>Doctors</h2>
+        <div class="right">
+          <button class="btn ghost small" onclick="openModal('doctor')">+ Add Doctor</button>
+          <button class="btn ghost small" onclick="loadDoctors()">🔄 Refresh</button>
+        </div>
+      </div>
       <table id="doctorsTable"><thead><tr><th>ID</th><th>Name</th><th>Specialization</th><th>Phone</th><th>Actions</th></tr></thead><tbody></tbody></table>
     </div>
 
     <!-- Appointments -->
     <div id="appointments" class="card">
-      <h2>Appointments</h2>
-      <button class="btn ghost" onclick="openModal('appointment')">+ Add Appointment</button>
+      <div class="flex-row">
+        <h2>Appointments</h2>
+        <div class="right">
+          <button class="btn ghost small" onclick="openModal('appointment')">+ Add Appointment</button>
+          <button class="btn ghost small" onclick="loadAppointments()">🔄 Refresh</button>
+        </div>
+      </div>
       <table id="appointmentsTable"><thead><tr><th>ID</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Reason</th><th>Actions</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <!-- Rooms -->
+    <div id="rooms" class="card">
+      <div style="display:flex;gap:10px;align-items:center;justify-content:space-between">
+        <h2>Rooms</h2>
+        <div style="display:flex;gap:8px">
+          <label class="muted" style="align-self:center">Status:</label>
+          <select id="search_status"><option value="">All</option><option>Available</option><option>Occupied</option></select>
+          <label class="muted" style="align-self:center">Type:</label>
+          <input id="search_type" placeholder="ICU / Private" />
+          <button class="btn ghost small" onclick="loadRooms()">Search</button>
+          <button class="btn ghost small" onclick="openModal('room')">+ Add Room</button>
+        </div>
+      </div>
+      <table id="roomsTable"><thead><tr><th>ID</th><th>Room No</th><th>Type</th><th>Status</th><th>Price/Day</th><th>Actions</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <!-- Billing -->
+    <div id="billing" class="card">
+      <div class="flex-row">
+        <h2>Billing</h2>
+        <div class="right">
+          <button class="btn ghost small" onclick="openModal('billing')">+ Add Bill</button>
+          <button class="btn ghost small" onclick="loadBills()">🔄 Refresh</button>
+        </div>
+      </div>
+      <table id="billingTable"><thead><tr><th>ID</th><th>Patient ID</th><th>Total</th><th>Paid</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody></tbody></table>
     </div>
   </main>
 
@@ -88,212 +137,440 @@
       <h3>Login</h3>
       <label>Username</label><input id="loginUser" />
       <label>Password</label><input id="loginPass" type="password" />
-      <div style="margin-top:10px;">
+      <div style="margin-top:10px;display:flex;gap:10px;">
         <button class="btn" onclick="submitLogin()">Login</button>
+        <button class="btn ghost" onclick="closeLogin()">Cancel</button>
       </div>
+      <p class="muted small" style="margin-top:8px">Use your API credentials. Token stored in localStorage.</p>
     </div>
   </div>
 
-  <!-- Add/Edit Modal -->
+  <!-- Generic modal -->
   <div id="modalBackdrop" class="modal-backdrop"><div id="modal" class="modal"></div></div>
+
+  <div id="toast" class="toast"></div>
 
   <footer>Built with ❤️ — FastAPI Hospital System</footer>
 
   <script>
-    const state = { apiBase: "http://127.0.0.1:8000", patients: [], doctors: [], appointments: [] };
+    /**********************
+     * Configuration
+     **********************/
+    const state = {
+      apiBase: "http://127.0.0.1:8000", // adjust if different
+      patients: [], doctors: [], appointments: [], rooms: [], bills: []
+    };
 
-    // -------------------- AUTH --------------------
-    async function submitLogin() {
-      const username = document.getElementById('loginUser').value;
-      const password = document.getElementById('loginPass').value;
-      const form = new URLSearchParams();
-      form.append('username', username);
-      form.append('password', password);
-
-      const res = await fetch(state.apiBase + '/auth/login', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: form
-      });
-
-      const data = await res.json();
-      if (data.access_token) {
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('refresh', data.refresh_token);
-        localStorage.setItem('username', data.username);
-        document.getElementById('loginModal').style.display = 'none';
-        alert('Login successful!');
-        showUserInfo();
-        fetchAll();
-      } else {
-        alert('Login failed: ' + (data.detail || 'Unknown error'));
-      }
+    /**********************
+     * Small helpers
+     **********************/
+    function toast(msg, duration=2500) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.style.display='block';
+      clearTimeout(t._timeout);
+      t._timeout = setTimeout(()=> t.style.display='none', duration);
     }
 
-    function logout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh');
-      localStorage.removeItem('username');
-      alert('Logged out!');
-      location.reload();
+    function setActiveNav(e){
+      document.querySelectorAll('a.navlink').forEach(a=>a.classList.remove('active'));
+      e.currentTarget.classList.add('active');
     }
 
-    function showUserInfo() {
-      const user = localStorage.getItem('username');
-      if (user) {
-        document.getElementById('usernameDisplay').innerText = user;
-        document.getElementById('userInfo').style.display = 'flex';
-      }
+    function showUserInfo(){
+      const userInfo = document.getElementById('userInfo');
+      const token = localStorage.getItem('token');
+      if(token){
+        userInfo.style.display='flex';
+        // optional: decode token to get username (not implemented here). We keep "Admin".
+        document.getElementById('usernameDisplay').textContent = localStorage.getItem('username') || 'Admin';
+      } else userInfo.style.display='none';
     }
 
-    // -------------------- API HANDLER --------------------
-    async function callApi(method, path, body) {
-      try {
-        let token = localStorage.getItem('token');
-        const refresh = localStorage.getItem('refresh');
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
-
-        let res = await fetch(state.apiBase + path, {
-          method, headers, body: body ? JSON.stringify(body) : undefined
-        });
-
-        if (res.status === 401 && refresh) {
-          const newToken = await refreshAccessToken(refresh);
-          if (newToken) {
-            headers['Authorization'] = 'Bearer ' + newToken;
-            res = await fetch(state.apiBase + path, {
-              method, headers, body: body ? JSON.stringify(body) : undefined
-            });
-          } else {
-            throw new Error('Session expired, please log in again.');
-          }
-        }
-
-        if (!res.ok) throw new Error('API error ' + res.status);
-        return await res.json().catch(() => null);
-      } catch (err) {
-        alert('API call failed: ' + err.message);
-        throw err;
-      }
+    function showLogin(){
+      document.getElementById('loginModal').style.display='flex';
+    }
+    function closeLogin(){
+      document.getElementById('loginModal').style.display='none';
     }
 
-    async function refreshAccessToken(refreshToken) {
-      try {
-        const res = await fetch(state.apiBase + '/auth/refresh', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ refresh_token: refreshToken })
-        });
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (data.access_token) {
-          localStorage.setItem('token', data.access_token);
-          return data.access_token;
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    }
-
-    // -------------------- FETCH DATA --------------------
-    async function fetchAll() {
-      const [pRes, dRes, aRes] = await Promise.all([
-        callApi('GET', '/patients/'),
-        callApi('GET', '/doctors/'),
-        callApi('GET', '/appointments/')
-      ]);
-      state.patients = pRes || [];
-      state.doctors = dRes || [];
-      state.appointments = aRes || [];
-      renderAll();
-    }
-
-    // -------------------- RENDER --------------------
-    function renderAll() {
-      renderTable('patientsTable', state.patients, ['id','name','age','gender','phone'], deletePatient);
-      renderTable('doctorsTable', state.doctors, ['id','name','specialization','phone'], deleteDoctor);
-      renderAppointments();
-      document.getElementById('totalPatients').innerText = state.patients.length;
-      document.getElementById('totalDoctors').innerText = state.doctors.length;
-      document.getElementById('totalAppointments').innerText = state.appointments.length;
-    }
-
-    function renderTable(id, data, fields, delFn) {
-      const tbody = document.querySelector(`#${id} tbody`);
-      tbody.innerHTML = '';
-      data.forEach(row => {
-        const tr = document.createElement('tr');
-        fields.forEach(f => tr.innerHTML += `<td>${row[f]}</td>`);
-        tr.innerHTML += `<td><button class="btn ghost" onclick="${delFn.name}(${row.id})">Delete</button></td>`;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function renderAppointments() {
-      const tbody = document.querySelector('#appointmentsTable tbody');
-      tbody.innerHTML = '';
-      state.appointments.forEach(a => {
-        const p = state.patients.find(p=>p.id===a.patient_id)?.name || a.patient_id;
-        const d = state.doctors.find(d=>d.id===a.doctor_id)?.name || a.doctor_id;
-        tbody.innerHTML += `<tr>
-          <td>${a.id}</td><td>${p}</td><td>${d}</td><td>${a.date}</td><td>${a.reason}</td>
-          <td><button class="btn ghost" onclick="deleteAppointment(${a.id})">Delete</button></td>
-        </tr>`;
-      });
-    }
-
-    // -------------------- CRUD --------------------
-    async function deletePatient(id){ if(confirm('Delete patient?')){ await callApi('DELETE', `/patients/${id}`); fetchAll(); } }
-    async function deleteDoctor(id){ if(confirm('Delete doctor?')){ await callApi('DELETE', `/doctors/${id}`); fetchAll(); } }
-    async function deleteAppointment(id){ if(confirm('Delete appointment?')){ await callApi('DELETE', `/appointments/${id}`); fetchAll(); } }
-
-    async function submitPatient(){
-      const body = {name:p_name.value, age:+p_age.value, gender:p_gender.value, phone:p_phone.value};
-      await callApi('POST','/patients/',body); closeModal(); fetchAll();
-    }
-    async function submitDoctor(){
-      const body = {name:d_name.value, specialization:d_spec.value, phone:d_phone.value};
-      await callApi('POST','/doctors/',body); closeModal(); fetchAll();
-    }
-    async function submitAppointment(){
-      const body = {patient_id:+a_patient.value, doctor_id:+a_doctor.value, date:a_date.value, reason:a_reason.value};
-      await callApi('POST','/appointments/',body); closeModal(); fetchAll();
-    }
-
-    // -------------------- MODALS --------------------
-    function openModal(type){
-      const mb=document.getElementById('modalBackdrop');const m=document.getElementById('modal');
+    function openModal(type, payload=null){
+      const mb=document.getElementById('modalBackdrop');
+      const m=document.getElementById('modal');
+      m.innerHTML=''; // reset
       if(type==='patient'){
-        m.innerHTML=`<h3>New Patient</h3><label>Name</label><input id='p_name'>
-        <label>Age</label><input id='p_age' type='number'><label>Gender</label>
-        <select id='p_gender'><option>Male</option><option>Female</option></select>
-        <label>Phone</label><input id='p_phone'>
-        <div style='margin-top:10px'><button class='btn' onclick='submitPatient()'>Save</button> <button class='btn ghost' onclick='closeModal()'>Cancel</button></div>`;
+        const p = payload || {name:'',age:'',gender:'',phone:''};
+        m.innerHTML = `<h3>${payload ? 'Edit' : 'New'} Patient</h3>
+          <label>Name</label><input id="p_name" value="${escapeHtml(p.name||'')}">
+          <label>Age</label><input id="p_age" type="number" value="${p.age||''}">
+          <label>Gender</label><select id="p_gender"><option ${p.gender==='Male'?'selected':''}>Male</option><option ${p.gender==='Female'?'selected':''}>Female</option><option ${p.gender==='Other'?'selected':''}>Other</option></select>
+          <label>Phone</label><input id="p_phone" value="${escapeHtml(p.phone||'')}">
+          <div style="margin-top:10px"><button class="btn" onclick="submitPatient(${p.id||'null'})">Save</button>
+          <button class="btn ghost" onclick="closeModal()">Cancel</button></div>`;
       } else if(type==='doctor'){
-        m.innerHTML=`<h3>New Doctor</h3><label>Name</label><input id='d_name'>
-        <label>Specialization</label><input id='d_spec'><label>Phone</label><input id='d_phone'>
-        <div style='margin-top:10px'><button class='btn' onclick='submitDoctor()'>Save</button> <button class='btn ghost' onclick='closeModal()'>Cancel</button></div>`;
+        const d = payload || {name:'',specialization:'',phone:''};
+        m.innerHTML = `<h3>${payload ? 'Edit' : 'New'} Doctor</h3>
+          <label>Name</label><input id="d_name" value="${escapeHtml(d.name||'')}">
+          <label>Specialization</label><input id="d_spec" value="${escapeHtml(d.specialization||'')}">
+          <label>Phone</label><input id="d_phone" value="${escapeHtml(d.phone||'')}">
+          <div style="margin-top:10px"><button class="btn" onclick="submitDoctor(${d.id||'null'})">Save</button>
+          <button class="btn ghost" onclick="closeModal()">Cancel</button></div>`;
+      } else if(type==='appointment'){
+        const a = payload || {patient_id:'',doctor_id:'',date:'',reason:''};
+        // produce patient & doctor options WITHOUT id suffix in label
+        const patientOptions = state.patients.map(p=>`<option value="${p.id}" ${p.id===a.patient_id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+        const doctorOptions = state.doctors.map(d=>`<option value="${d.id}" ${d.id===a.doctor_id?'selected':''}>${escapeHtml(d.name)}</option>`).join('');
+        m.innerHTML = `<h3>${payload ? 'Edit' : 'New'} Appointment</h3>
+          <label>Patient</label><select id="a_patient">${patientOptions}</select>
+          <label>Doctor</label><select id="a_doctor">${doctorOptions}</select>
+          <label>Date & Time</label><input id="a_date" type="datetime-local" value="${a.date?formatForInput(a.date):''}">
+          <label>Reason</label><input id="a_reason" value="${escapeHtml(a.reason||'')}">
+          <div style="margin-top:10px"><button class="btn" onclick="submitAppointment(${a.id||'null'})">Save</button>
+          <button class="btn ghost" onclick="closeModal()">Cancel</button></div>`;
+      } else if(type==='room'){
+        const r = payload || {room_number:'',room_type:'',status:'Available',price_per_day:''};
+        m.innerHTML = `<h3>${payload ? 'Edit' : 'New'} Room</h3>
+          <label>Room Number</label><input id="r_number" value="${escapeHtml(r.room_number||'')}">
+          <label>Room Type</label><input id="r_type" value="${escapeHtml(r.room_type||'')}">
+          <label>Status</label><select id="r_status"><option ${r.status==='Available'?'selected':''}>Available</option><option ${r.status==='Occupied'?'selected':''}>Occupied</option></select>
+          <label>Price per Day</label><input id="r_price" type="number" value="${r.price_per_day||''}">
+          <div style="margin-top:10px"><button class="btn" onclick="submitRoom(${r.id||'null'})">Save</button>
+          <button class="btn ghost" onclick="closeModal()">Cancel</button></div>`;
+      } else if(type==='billing'){
+        const b = payload || {patient_id:'',total_amount:'',paid_amount:'',payment_status:'Pending'};
+        // patient options without id suffix
+        const patientOptions = state.patients.map(p=>`<option value="${p.id}" ${p.id===b.patient_id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+        m.innerHTML = `<h3>${payload ? 'Edit' : 'New'} Bill</h3>
+          <label>Patient</label><select id="b_patient">${patientOptions}</select>
+          <label>Total Amount</label><input id="b_total" type="number" value="${b.total_amount||''}">
+          <label>Paid Amount</label><input id="b_paid" type="number" value="${b.paid_amount||''}">
+          <label>Status</label><select id="b_status"><option ${b.payment_status==='Pending'?'selected':''}>Pending</option><option ${b.payment_status==='Paid'?'selected':''}>Paid</option><option ${b.payment_status==='Partial'?'selected':''}>Partial</option></select>
+          <div style="margin-top:10px"><button class="btn" onclick="submitBill(${b.id||'null'})">Save</button>
+          <button class="btn ghost" onclick="closeModal()">Cancel</button></div>`;
       } else {
-        const pOpts=state.patients.map(p=>`<option value='${p.id}'>${p.name}</option>`).join('');
-        const dOpts=state.doctors.map(d=>`<option value='${d.id}'>${d.name}</option>`).join('');
-        m.innerHTML=`<h3>New Appointment</h3><label>Patient</label><select id='a_patient'>${pOpts}</select>
-        <label>Doctor</label><select id='a_doctor'>${dOpts}</select><label>Date</label><input id='a_date' type='date'>
-        <label>Reason</label><textarea id='a_reason'></textarea>
-        <div style='margin-top:10px'><button class='btn' onclick='submitAppointment()'>Save</button> <button class='btn ghost' onclick='closeModal()'>Cancel</button></div>`;
+        m.innerHTML = `<div>Unknown modal</div><div style="margin-top:10px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
       }
       mb.style.display='flex';
     }
 
-    function closeModal(){document.getElementById('modalBackdrop').style.display='none';}
+    function closeModal(){
+      document.getElementById('modalBackdrop').style.display='none';
+    }
 
-    // -------------------- INIT --------------------
-    (function(){
-      const token=localStorage.getItem('token');
-      if(!token){document.getElementById('loginModal').style.display='flex';}
-      else {document.getElementById('loginModal').style.display='none';showUserInfo();fetchAll();}
+    function escapeHtml(unsafe){
+      if(!unsafe && unsafe !== 0) return '';
+      return String(unsafe).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]); });
+    }
+
+    function formatForInput(dateStr){
+      try{
+        const d = new Date(dateStr);
+        // local ISO w/o seconds
+        const iso = d.toISOString();
+        return iso.slice(0,16);
+      }catch(e){ return ''; }
+    }
+
+    /**********************
+     * API layer (JWT aware)
+     **********************/
+    async function callApi(method, path, body=null){
+      const url = state.apiBase + path;
+      const headers = {'Content-Type':'application/json'};
+      const token = localStorage.getItem('token');
+      if(token) headers['Authorization'] = 'Bearer ' + token;
+      const opts = { method, headers };
+      if(body) opts.body = JSON.stringify(body);
+      try{
+        const res = await fetch(url, opts);
+        if(res.status === 401){
+          // token expired / invalid -> force login
+          localStorage.removeItem('token');
+          localStorage.removeItem('username');
+          showUserInfo();
+          showLogin();
+          throw new Error('Unauthorized — please login again.');
+        }
+        // if 204 No Content
+        if(res.status === 204) return null;
+        const data = await res.json().catch(()=>null);
+        if(!res.ok){
+          const msg = (data && data.detail) || (data && data.message) || res.statusText || 'API Error';
+          throw new Error(msg);
+        }
+        return data;
+      }catch(err){
+        // Network or other error
+        console.error('API error', method, path, err);
+        throw err;
+      }
+    }
+
+    /**********************
+     * Auth: login/logout
+     **********************/
+async function submitLogin() {
+    const username = document.getElementById("loginUser").value.trim();
+    const password = document.getElementById("loginPass").value.trim();
+
+    if (!username || !password) {
+        toast("Enter username & password");
+        return;
+    }
+
+    // Create form-data for OAuth2PasswordRequestForm
+    const body = new URLSearchParams();
+    body.append("username", username);
+    body.append("password", password);
+
+    try {
+        const res = await fetch(state.apiBase + "/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: body
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail || "Login failed");
+        }
+
+        // Save tokens
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("refresh_token", data.refresh_token);
+        localStorage.setItem("username", data.username);
+
+        closeLogin();
+        showUserInfo();
+        fetchAll();
+        toast("Login successful");
+
+    } catch (error) {
+        toast("Login error: " + error.message);
+    }
+}
+
+    function logout(){
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      showUserInfo();
+      showLogin();
+      toast('Logged out');
+    }
+
+    /**********************
+     * Fetch & render flows
+     **********************/
+    async function fetchAll(){
+      try{
+        await Promise.all([loadPatients(), loadDoctors(), loadAppointments(), loadRooms(), loadBills()]);
+      }catch(err){
+        console.warn('fetchAll partial fail', err);
+      }
+    }
+
+    // Patients
+    async function loadPatients(){
+      try{
+        const res = await callApi('GET','/patients/');
+        state.patients = Array.isArray(res) ? res : [];
+        renderPatients();
+      }catch(err){
+        console.warn('loadPatients', err); toast('Could not load patients');
+      }
+    }
+    function renderPatients(){
+      document.getElementById('totalPatients').textContent = state.patients.length || 0;
+      const tbody = document.querySelector('#patientsTable tbody'); tbody.innerHTML='';
+      state.patients.forEach(p=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.id}</td><td>${escapeHtml(p.name)}</td><td>${p.age||''}</td><td>${escapeHtml(p.gender||'')}</td><td>${escapeHtml(p.phone||'')}</td>
+          <td>
+            <button class="btn ghost small" onclick='openModal("patient", ${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
+            <button class="btn ghost small" onclick='deletePatient(${p.id})'>Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    async function submitPatient(id){
+      const body = { name: document.getElementById('p_name').value.trim(), age: +document.getElementById('p_age').value || null, gender: document.getElementById('p_gender').value, phone: document.getElementById('p_phone').value.trim() };
+      try{
+        if(id && id !== 'null'){
+          await callApi('PUT', `/patients/${id}`, body);
+          toast('Patient updated');
+        } else {
+          await callApi('POST', '/patients/', body);
+          toast('Patient created');
+        }
+        closeModal(); loadPatients(); // refresh
+      }catch(err){ toast('Unable to save patient: ' + err.message); }
+    }
+    async function deletePatient(id){
+      if(!confirm('Delete patient #' + id + '?')) return;
+      try{ await callApi('DELETE', `/patients/${id}`); toast('Deleted'); loadPatients(); }catch(err){ toast('Delete failed: '+err.message); }
+    }
+
+    // Doctors
+    async function loadDoctors(){
+      try{
+        const res = await callApi('GET','/doctors/');
+        state.doctors = Array.isArray(res) ? res : [];
+        renderDoctors();
+      }catch(err){ console.warn('loadDoctors',err); toast('Could not load doctors'); }
+    }
+    function renderDoctors(){
+      document.getElementById('totalDoctors').textContent = state.doctors.length || 0;
+      const tbody = document.querySelector('#doctorsTable tbody'); tbody.innerHTML='';
+      state.doctors.forEach(d=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.id}</td><td>${escapeHtml(d.name)}</td><td>${escapeHtml(d.specialization||'')}</td><td>${escapeHtml(d.phone||'')}</td>
+          <td>
+            <button class="btn ghost small" onclick='openModal("doctor", ${JSON.stringify(d).replace(/'/g,"&#39;")})'>Edit</button>
+            <button class="btn ghost small" onclick='deleteDoctor(${d.id})'>Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    async function submitDoctor(id){
+      const body = { name: document.getElementById('d_name').value.trim(), specialization: document.getElementById('d_spec').value.trim(), phone: document.getElementById('d_phone').value.trim() };
+      try{
+        if(id && id !== 'null'){ await callApi('PUT', `/doctors/${id}`, body); toast('Doctor updated'); }
+        else { await callApi('POST', '/doctors/', body); toast('Doctor created'); }
+        closeModal(); loadDoctors();
+      }catch(err){ toast('Unable to save doctor: ' + err.message); }
+    }
+    async function deleteDoctor(id){
+      if(!confirm('Delete doctor #' + id + '?')) return;
+      try{ await callApi('DELETE', `/doctors/${id}`); toast('Deleted'); loadDoctors(); }catch(err){ toast('Delete failed: '+err.message); }
+    }
+
+    // Appointments
+    async function loadAppointments(){
+      try{
+        const res = await callApi('GET','/appointments/');
+        state.appointments = Array.isArray(res) ? res : [];
+        renderAppointments();
+      }catch(err){ console.warn('loadAppointments',err); toast('Could not load appointments'); }
+    }
+    function renderAppointments(){
+      document.getElementById('totalAppointments').textContent = state.appointments.length || 0;
+      const tbody = document.querySelector('#appointmentsTable tbody'); tbody.innerHTML='';
+      state.appointments.forEach(a=>{
+        const patient = state.patients.find(p=>p.id===a.patient_id);
+        const doctor = state.doctors.find(d=>d.id===a.doctor_id);
+        const tr = document.createElement('tr');
+        // Removed "(#id)" suffix from both patient and doctor displays
+        tr.innerHTML = `<td>${a.id}</td><td>${escapeHtml(patient ? patient.name : '—')}</td><td>${escapeHtml(doctor ? doctor.name : '—')}</td><td>${new Date(a.date).toLocaleString()}</td><td>${escapeHtml(a.reason||'')}</td>
+          <td>
+            <button class="btn ghost small" onclick='openModal("appointment", ${JSON.stringify(a).replace(/'/g,"&#39;")})'>Edit</button>
+            <button class="btn ghost small" onclick='deleteAppointment(${a.id})'>Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    async function submitAppointment(id){
+      const body = { patient_id: +document.getElementById('a_patient').value, doctor_id: +document.getElementById('a_doctor').value, date: document.getElementById('a_date').value, reason: document.getElementById('a_reason').value.trim() };
+      try{
+        if(id && id !== 'null'){ await callApi('PUT', `/appointments/${id}`, body); toast('Appointment updated'); }
+        else { await callApi('POST', '/appointments/', body); toast('Appointment created'); }
+        closeModal(); loadAppointments();
+      }catch(err){ toast('Unable to save appointment: ' + err.message); }
+    }
+    async function deleteAppointment(id){
+      if(!confirm('Delete appointment #' + id + '?')) return;
+      try{ await callApi('DELETE', `/appointments/${id}`); toast('Deleted'); loadAppointments(); }catch(err){ toast('Delete failed: '+err.message); }
+    }
+
+    // Rooms
+    async function loadRooms(){
+      try{
+        const status = encodeURIComponent(document.getElementById('search_status').value || '');
+        const type = encodeURIComponent(document.getElementById('search_type').value || '');
+        const res = await callApi('GET', `/rooms/search?status=${status}&room_type=${type}`);
+        state.rooms = Array.isArray(res) ? res : [];
+        renderRooms();
+      }catch(err){
+        console.warn('loadRooms',err); toast('Could not load rooms');
+      }
+    }
+    function renderRooms(){
+      const tbody = document.querySelector('#roomsTable tbody'); tbody.innerHTML='';
+      state.rooms.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.id}</td><td>${escapeHtml(r.room_number)}</td><td>${escapeHtml(r.room_type||'')}</td><td>${escapeHtml(r.status||'')}</td><td>${r.price_per_day || ''}</td>
+          <td>
+            <button class="btn ghost small" onclick='openModal("room", ${JSON.stringify(r).replace(/'/g,"&#39;")})'>Edit</button>
+            <button class="btn ghost small" onclick='deleteRoom(${r.id})'>Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    async function submitRoom(id){
+      const body = { room_number: document.getElementById('r_number').value.trim(), room_type: document.getElementById('r_type').value.trim(), status: document.getElementById('r_status').value, price_per_day: +document.getElementById('r_price').value || 0 };
+      try{
+        if(id && id !== 'null'){ await callApi('PUT', `/rooms/${id}`, body); toast('Room updated'); }
+        else { await callApi('POST', '/rooms/', body); toast('Room created'); }
+        closeModal(); loadRooms();
+      }catch(err){ toast('Unable to save room: ' + err.message); }
+    }
+    async function deleteRoom(id){
+      if(!confirm('Delete room #' + id + '?')) return;
+      try{ await callApi('DELETE', `/rooms/${id}`); toast('Deleted'); loadRooms(); }catch(err){ toast('Delete failed: '+err.message); }
+    }
+
+    // Billing
+    async function loadBills(){
+      try{
+        const res = await callApi('GET','/billing/');
+        state.bills = Array.isArray(res) ? res : [];
+        renderBills();
+      }catch(err){ console.warn('loadBills',err); toast('Could not load bills'); }
+    }
+    function renderBills(){
+      const tbody = document.querySelector('#billingTable tbody'); tbody.innerHTML='';
+      state.bills.forEach(b=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${b.id}</td><td>${b.patient_id}</td><td>${b.total_amount}</td><td>${b.paid_amount}</td><td>${escapeHtml(b.payment_status||'')}</td><td>${b.billing_date ? new Date(b.billing_date).toLocaleString() : ''}</td>
+          <td>
+            <button class="btn ghost small" onclick='openModal("billing", ${JSON.stringify(b).replace(/'/g,"&#39;")})'>Edit</button>
+            <button class="btn ghost small" onclick='deleteBill(${b.id})'>Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    async function submitBill(id){
+      const body = { patient_id: +document.getElementById('b_patient').value, total_amount: +document.getElementById('b_total').value || 0, paid_amount: +document.getElementById('b_paid').value || 0, payment_status: document.getElementById('b_status').value };
+      try{
+        if(id && id !== 'null'){ await callApi('PUT', `/billing/${id}`, body); toast('Bill updated'); }
+        else { await callApi('POST', '/billing/', body); toast('Bill created'); }
+        closeModal(); loadBills();
+      }catch(err){ toast('Unable to save bill: ' + err.message); }
+    }
+    async function deleteBill(id){
+      if(!confirm('Delete bill #' + id + '?')) return;
+      try{ await callApi('DELETE', `/billing/${id}`); toast('Deleted'); loadBills(); }catch(err){ toast('Delete failed: '+err.message); }
+    }
+
+    /**********************
+     * Init logic
+     **********************/
+    (function init(){
+      // If no token -> show login. If token -> try to fetch.
+      const token = localStorage.getItem('token');
+      if(!token){
+        showLogin();
+      } else {
+        showUserInfo();
+        // fetch all; if token invalid, callApi will show login
+        fetchAll();
+      }
+      // close modal on backdrop click
+      document.getElementById('modalBackdrop').addEventListener('click', (e)=>{ if(e.target === document.getElementById('modalBackdrop')) closeModal(); });
+      document.getElementById('loginModal').addEventListener('click', (e)=>{ if(e.target === document.getElementById('loginModal')) closeLogin(); });
     })();
+
   </script>
 </body>
 </html>
