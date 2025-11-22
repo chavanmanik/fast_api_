@@ -5,6 +5,10 @@ from app import models, schemas
 
 router = APIRouter(prefix="/rooms", tags=["Rooms"])
 
+# GET ROOM
+@router.get("/", response_model=list[schemas.RoomResponse])
+def get_room(db: Session = Depends(get_db)):
+    return db.query(models.Room).all()
 
 # CREATE ROOM
 @router.post("/", response_model=schemas.RoomResponse)
@@ -52,3 +56,4 @@ def delete_room(room_id: int, db: Session = Depends(get_db)):
     db.delete(db_room)
     db.commit()
     return {"message": "Room deleted successfully"}
+
